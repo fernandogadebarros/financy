@@ -1,0 +1,27 @@
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "4001:4000"
+    environment:
+      - JWT_SECRET=${JWT_SECRET}
+      - DATABASE_URL=${DATABASE_URL:-file:./dev.db}
+      - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost:5174}
+      - PORT=4000
+    volumes:
+      - backend_db:/app/prisma
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        - VITE_BACKEND_URL=${VITE_BACKEND_URL:-http://localhost:4001/graphql}
+    ports:
+      - "5174:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  backend_db:
