@@ -16,7 +16,7 @@ services:
     build:
       context: ./frontend
       args:
-        - VITE_BACKEND_URL=${VITE_BACKEND_URL:-http://localhost:4001/graphql}
+        - VITE_BACKEND_URL=${VITE_BACKEND_URL:-/graphql}
     ports:
       - "5174:80"
     depends_on:

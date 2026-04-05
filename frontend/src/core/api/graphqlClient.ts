@@ -1,9 +1,11 @@
 import { GraphQLClient } from "graphql-request"
 
-const rawBackendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:4000/graphql"
-const BACKEND_URL = rawBackendUrl.endsWith("/graphql")
-  ? rawBackendUrl
-  : `${rawBackendUrl.replace(/\/+$/, "")}/graphql`
+const rawBackendUrl = import.meta.env.VITE_BACKEND_URL || "/graphql"
+const BACKEND_URL = rawBackendUrl.startsWith("/")
+  ? `${window.location.origin}${rawBackendUrl}`
+  : rawBackendUrl.endsWith("/graphql")
+    ? rawBackendUrl
+    : `${rawBackendUrl.replace(/\/+$/, "")}/graphql`
 
 export const graphqlClient = new GraphQLClient(BACKEND_URL, {
   requestMiddleware: (request) => {
