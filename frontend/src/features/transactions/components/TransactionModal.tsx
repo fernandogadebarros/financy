@@ -1,4 +1,4 @@
-import { useEffect } from "react"
+import { useEffect, useMemo } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import clsx from "clsx"
@@ -34,6 +34,19 @@ export default function TransactionModal({ open, onClose, editingTransaction }: 
   const isPending = createMutation.isPending || updateMutation.isPending
   const isEditing = !!editingTransaction
 
+  const defaultValues = useMemo<TransactionFormData>(() => {
+    if (!editingTransaction) {
+      return { type: "EXPENSE", title: "", date: "", amount: "", categoryId: "" }
+    }
+    return {
+      title: editingTransaction.title,
+      date: editingTransaction.date?.slice(0, 10) ?? "",
+      amount: amountToCentsString(editingTransaction.amount),
+      categoryId: editingTransaction.category?.id ?? "",
+      type: editingTransaction.type,
+    }
+  }, [editingTransaction])
+
   const {
     register,
     handleSubmit,
@@ -43,26 +56,16 @@ export default function TransactionModal({ open, onClose, editingTransaction }: 
     formState: { errors },
   } = useForm<TransactionFormData>({
     resolver: zodResolver(transactionSchema),
-    defaultValues: { type: "EXPENSE" },
+    defaultValues,
   })
 
   const type = watch("type")
   const dateValue = watch("date")
+  const categoryIdValue = watch("categoryId")
 
   useEffect(() => {
-    if (!editingTransaction) {
-      reset({ type: "EXPENSE", title: "", date: "", amount: "", categoryId: "" })
-      return
-    }
-
-    reset({
-      title: editingTransaction.title,
-      date: editingTransaction.date?.slice(0, 10) ?? "",
-      amount: amountToCentsString(editingTransaction.amount),
-      categoryId: editingTransaction.category?.id ?? "",
-      type: editingTransaction.type,
-    })
-  }, [editingTransaction, open, reset])
+    if (open) reset(defaultValues)
+  }, [open, defaultValues, reset])
 
   const onSubmit = (data: TransactionFormData) => {
     const payload = {
@@ -175,8 +178,8 @@ export default function TransactionModal({ open, onClose, editingTransaction }: 
           <div className="flex flex-col gap-2">
             <label className="text-sm font-medium text-gray-700">Categoria</label>
             <Select
-              onValueChange={(v) => setValue("categoryId", v)}
-              defaultValue={editingTransaction?.category?.id}
+              value={categoryIdValue}
+              onValueChange={(v) => setValue("categoryId", v, { shouldValidate: true })}
             >
               <SelectTrigger className={clsx(errors.categoryId && "border-red-base")}>
                 <SelectValue placeholder="Selecione" />

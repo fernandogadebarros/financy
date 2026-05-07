@@ -1,6 +1,5 @@
 import { gql } from "graphql-request"
 
-// Campos mínimos para exibição em listas e componentes (ex: TransactionRow)
 export const CATEGORY_BADGE_FIELDS = gql`
   fragment CategoryBadgeFields on Category {
     id
@@ -10,7 +9,6 @@ export const CATEGORY_BADGE_FIELDS = gql`
   }
 `
 
-// Campos completos para a página de categorias
 export const CATEGORY_FULL_FIELDS = gql`
   fragment CategoryFullFields on Category {
     id

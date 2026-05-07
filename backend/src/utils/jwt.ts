@@ -1,24 +1,22 @@
 import jwt, { type SignOptions } from "jsonwebtoken"
+import { z } from "zod"
+import { env } from "../config.js"
 
-export interface JwtPayload {
-  userId: string
-  email: string
-}
+const tokenPayloadSchema = z.object({
+  userId: z.string().min(1),
+  email: z.string().email(),
+})
 
-function requireEnv(key: string): string {
-  const value = process.env[key]
-  if (!value) throw new Error(`Missing required environment variable: ${key}`)
-  return value
-}
+export type JwtPayload = z.infer<typeof tokenPayloadSchema>
 
-export function signToken(payload: JwtPayload, expiresIn: SignOptions["expiresIn"] = "7d"): string {
-  return jwt.sign(payload, requireEnv("JWT_SECRET"), { expiresIn })
+export function signToken(
+  payload: JwtPayload,
+  expiresIn: SignOptions["expiresIn"] = env.JWT_EXPIRES_IN as SignOptions["expiresIn"],
+): string {
+  return jwt.sign(payload, env.JWT_SECRET, { expiresIn })
 }
 
 export function verifyToken(token: string): JwtPayload {
-  const decoded = jwt.verify(token, requireEnv("JWT_SECRET"))
-  if (typeof decoded === "string" || typeof (decoded as JwtPayload).userId !== "string") {
-    throw new Error("Invalid token payload")
-  }
-  return decoded as JwtPayload
+  const decoded = jwt.verify(token, env.JWT_SECRET)
+  return tokenPayloadSchema.parse(decoded)
 }

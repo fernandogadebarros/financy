@@ -1,5 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { graphqlClient } from "@/core/api/graphqlClient"
+import { toast } from "@/core/components/toastStore"
+import { getErrorMessage } from "@utils/errors"
 import {
   GET_CATEGORIES,
   CREATE_CATEGORY,
@@ -36,7 +38,9 @@ export function useCreateCategory() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["categories"] })
+      toast.success("Categoria criada")
     },
+    onError: (error) => toast.error(getErrorMessage(error, "Erro ao criar categoria")),
   })
 }
 
@@ -52,7 +56,9 @@ export function useUpdateCategory() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["categories"] })
+      toast.success("Categoria atualizada")
     },
+    onError: (error) => toast.error(getErrorMessage(error, "Erro ao atualizar categoria")),
   })
 }
 
@@ -65,6 +71,8 @@ export function useDeleteCategory() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["categories"] })
       qc.invalidateQueries({ queryKey: ["transactions"] })
+      toast.success("Categoria removida")
     },
+    onError: (error) => toast.error(getErrorMessage(error, "Erro ao remover categoria")),
   })
 }

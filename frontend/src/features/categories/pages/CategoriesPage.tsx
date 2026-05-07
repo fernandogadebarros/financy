@@ -6,6 +6,7 @@ import CategoryModal from "../components/CategoryModal"
 import CategoryBadge from "../components/CategoryBadge"
 import type { Category } from "../types/category.types"
 import { useTransactions } from "@/features/transactions/hooks/useTransactions"
+import { useTransactionCountByCategory } from "@/features/dashboard/hooks/useDashboardStats"
 import { getItemLabel } from "@utils/text"
 
 export default function CategoriesPage() {
@@ -16,18 +17,7 @@ export default function CategoriesPage() {
   const { data: transactions = [] } = useTransactions()
   const deleteMutation = useDeleteCategory()
 
-  const transactionCountByCategory = useMemo(() => {
-    const countByCategory = new Map<string, number>()
-
-    transactions.forEach((transaction) => {
-      const categoryId = transaction.category?.id
-      if (!categoryId) return
-
-      countByCategory.set(categoryId, (countByCategory.get(categoryId) ?? 0) + 1)
-    })
-
-    return countByCategory
-  }, [transactions])
+  const transactionCountByCategory = useTransactionCountByCategory(transactions)
 
   const totalTransactions = transactions.length
   const mostUsed = useMemo(() => {

@@ -1,6 +1,6 @@
 import { Arg, Mutation, Query, Resolver, UseMiddleware } from "type-graphql"
 import { GraphQLError } from "graphql"
-import { AuthService } from "../services/auth.service.js"
+import { authService } from "../services/auth.service.js"
 import { RegisterInput, LoginInput } from "../dtos/input/auth.input.js"
 import { AuthPayload } from "../dtos/output/auth.output.js"
 import { UserModel } from "../models/user.model.js"
@@ -9,8 +9,6 @@ import { GqlUser } from "../graphql/decorators/user.decorator.js"
 
 @Resolver()
 export class AuthResolver {
-  private authService = new AuthService()
-
   @Query(() => UserModel)
   @UseMiddleware(IsAuth)
   async me(@GqlUser() user: UserModel | null): Promise<UserModel> {
@@ -20,21 +18,21 @@ export class AuthResolver {
 
   @Mutation(() => AuthPayload)
   async register(@Arg("input", () => RegisterInput) input: RegisterInput): Promise<AuthPayload> {
-    return this.authService.register(input)
+    return authService.register(input)
   }
 
   @Mutation(() => AuthPayload)
   async login(@Arg("input", () => LoginInput) input: LoginInput): Promise<AuthPayload> {
-    return this.authService.login(input)
+    return authService.login(input)
   }
 
   @Mutation(() => UserModel)
   @UseMiddleware(IsAuth)
   async updateMe(
     @Arg("name", () => String) name: string,
-    @GqlUser() user: UserModel | null
+    @GqlUser() user: UserModel | null,
   ): Promise<UserModel> {
     if (!user) throw new GraphQLError("User not found", { extensions: { code: "NOT_FOUND" } })
-    return this.authService.updateMe(user.id, name)
+    return authService.updateMe(user.id, name)
   }
 }

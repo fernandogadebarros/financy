@@ -6,6 +6,7 @@ import clsx from "clsx"
 import { Mail, Lock, EyeClosed, Eye, UserRound, LogIn } from "lucide-react"
 import { useRegister } from "../hooks/useAuth"
 import { registerSchema, type RegisterFormData } from "../schemas/auth.schemas"
+import { getErrorMessage } from "@utils/errors"
 
 export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false)
@@ -40,7 +41,7 @@ export default function RegisterPage() {
 
         {error && (
           <div className="mb-4 rounded-lg bg-red-light border border-red-base/30 px-4 py-3 text-sm text-red-dark">
-            {(error as Error).message || "Erro ao criar conta"}
+            {getErrorMessage(error, "Erro ao criar conta")}
           </div>
         )}
 

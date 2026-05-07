@@ -1,4 +1,4 @@
-import { useEffect } from "react"
+import { useEffect, useMemo } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import clsx from "clsx"
@@ -55,6 +55,18 @@ export default function CategoryModal({ open, onClose, editing }: CategoryModalP
   const isPending = createMutation.isPending || updateMutation.isPending
   const isEditing = !!editing
 
+  const defaultValues = useMemo<CategoryFormData>(() => {
+    if (!editing) {
+      return { color: COLORS[0], icon: ICONS[0].key, name: "", description: "" }
+    }
+    return {
+      name: editing.name,
+      description: editing.description ?? "",
+      color: normalizeHexColor(editing.color),
+      icon: editing.icon,
+    }
+  }, [editing])
+
   const {
     register,
     handleSubmit,
@@ -64,7 +76,7 @@ export default function CategoryModal({ open, onClose, editing }: CategoryModalP
     formState: { errors },
   } = useForm<CategoryFormData>({
     resolver: zodResolver(categorySchema),
-    defaultValues: { color: COLORS[0], icon: ICONS[0].key },
+    defaultValues,
   })
 
   const selectedColor = watch("color")
@@ -72,18 +84,8 @@ export default function CategoryModal({ open, onClose, editing }: CategoryModalP
   const selectedIcon = watch("icon")
 
   useEffect(() => {
-    if (!editing) {
-      reset({ color: COLORS[0], icon: ICONS[0].key, name: "", description: "" })
-      return
-    }
-
-    reset({
-      name: editing.name,
-      description: editing.description ?? "",
-      color: normalizeHexColor(editing.color),
-      icon: editing.icon,
-    })
-  }, [editing, open, reset])
+    if (open) reset(defaultValues)
+  }, [open, defaultValues, reset])
 
   const onSubmit = (data: CategoryFormData) => {
     if (!editing) {

@@ -3,7 +3,7 @@ import { useAuthStore } from "@/features/auth/store/authStore"
 import { getInitials } from "@utils/formatters"
 
 export default function Navbar() {
-  const { user } = useAuthStore()
+  const user = useAuthStore((s) => s.user)
   const navigate = useNavigate()
 
   const navLinkClass = ({ isActive }: { isActive: boolean }) =>
@@ -23,11 +23,12 @@ export default function Navbar() {
           </Link>
 
           <button
+            type="button"
+            aria-label={user?.name ? `Abrir perfil de ${user.name}` : "Abrir perfil"}
             onClick={() => navigate("/perfil")}
-            className="cursor-pointer w-9 h-9 rounded-full bg-gray-300 flex items-center justify-center text-sm font-semibold text-gray-700 hover:ring-2 hover:ring-brand-base/40 transition-all sm:order-3"
-            title={user?.name ?? "Perfil"}
+            className="cursor-pointer w-9 h-9 rounded-full bg-gray-300 flex items-center justify-center text-sm font-semibold text-gray-700 hover:ring-2 hover:ring-brand-base/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-base transition-all sm:order-3"
           >
-            {user ? getInitials(user.name) : "?"}
+            <span aria-hidden="true">{user ? getInitials(user.name) : "?"}</span>
           </button>
         </div>
 

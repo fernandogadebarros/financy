@@ -12,7 +12,7 @@ import type {
 } from "../types/auth.types"
 
 export function useLogin() {
-  const { setAuth } = useAuthStore()
+  const setAuth = useAuthStore((s) => s.setAuth)
 
   return useMutation({
     mutationFn: async (input: LoginInput) => {
@@ -30,7 +30,7 @@ export function useLogin() {
 }
 
 export function useRegister() {
-  const { setAuth } = useAuthStore()
+  const setAuth = useAuthStore((s) => s.setAuth)
 
   return useMutation({
     mutationFn: async (input: RegisterInput) => {
@@ -48,7 +48,7 @@ export function useRegister() {
 }
 
 export function useUpdateMe() {
-  const { updateUser } = useAuthStore()
+  const updateUser = useAuthStore((s) => s.updateUser)
 
   return useMutation({
     mutationFn: async (name: string) => {

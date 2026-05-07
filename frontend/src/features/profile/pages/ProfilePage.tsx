@@ -10,7 +10,8 @@ import { getInitials } from "@utils/formatters"
 import { profileSchema, type ProfileFormData } from "../schemas/profile.schemas"
 
 export default function ProfilePage() {
-  const { user, clearAuth } = useAuthStore()
+  const user = useAuthStore((s) => s.user)
+  const clearAuth = useAuthStore((s) => s.clearAuth)
   const navigate = useNavigate()
   const updateMe = useUpdateMe()
 

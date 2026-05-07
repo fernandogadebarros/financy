@@ -1,13 +1,15 @@
-import { useState, useMemo } from "react"
-import clsx from "clsx"
-import { Plus, Search, Trash, SquarePen, CircleArrowDown, CircleArrowUp } from "lucide-react"
+import { useState } from "react"
+import { Plus, Search } from "lucide-react"
 import { useTransactions, useDeleteTransaction } from "../hooks/useTransactions"
+import { useTransactionFilters } from "../hooks/useTransactionFilters"
+import { useFilteredTransactions, useMonthOptions } from "../hooks/useFilteredTransactions"
 import { useCategories } from "@/features/categories/hooks/useCategories"
-import { formatCurrency, formatDate, formatMonthLabel } from "@utils/formatters"
-import CategoryIcon from "@/core/components/CategoryIcon"
-import CategoryBadge from "@/features/categories/components/CategoryBadge"
+import { formatMonthLabel } from "@utils/formatters"
 import TransactionModal from "../components/TransactionModal"
+import TransactionRow from "../components/TransactionRow"
+import Pagination from "@/core/components/Pagination"
 import type { Transaction } from "../types/transaction.types"
+import type { TransactionFilterType } from "../hooks/useTransactionFilters"
 import {
   Select,
   SelectContent,
@@ -22,35 +24,15 @@ const PAGE_SIZE = 8
 export default function TransactionsPage() {
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<Transaction | undefined>()
-  const [search, setSearch] = useState("")
-  const [filterType, setFilterType] = useState("todos")
-  const [filterCategory, setFilterCategory] = useState("todas")
-  const [filterMonth, setFilterMonth] = useState<string>("todos")
-  const [page, setPage] = useState(1)
+
+  const { filters, page, setPage, update } = useTransactionFilters()
 
   const { data: transactions = [], isLoading } = useTransactions()
   const { data: categories = [] } = useCategories()
   const deleteMutation = useDeleteTransaction()
 
-  const monthOptions = useMemo(() => {
-    const set = new Set<string>()
-    transactions.forEach((t) => {
-      const key = t.date.slice(0, 7)
-      set.add(key)
-    })
-    return Array.from(set).sort((a, b) => b.localeCompare(a))
-  }, [transactions])
-
-  const filtered = useMemo(() => {
-    return transactions.filter((t) => {
-      if (search && !t.title.toLowerCase().includes(search.toLowerCase())) return false
-      if (filterType === "income" && t.type !== "INCOME") return false
-      if (filterType === "expense" && t.type !== "EXPENSE") return false
-      if (filterCategory !== "todas" && t.category?.id !== filterCategory) return false
-      if (filterMonth !== "todos" && !t.date.startsWith(filterMonth)) return false
-      return true
-    })
-  }, [transactions, search, filterType, filterCategory, filterMonth])
+  const monthOptions = useMonthOptions(transactions)
+  const filtered = useFilteredTransactions(transactions, filters)
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
@@ -82,6 +64,7 @@ export default function TransactionsPage() {
           </p>
         </div>
         <button
+          type="button"
           onClick={() => setModalOpen(true)}
           className="cursor-pointer flex items-center justify-center gap-2 bg-brand-base hover:bg-brand-dark text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition-colors w-full sm:w-auto"
         >
@@ -97,8 +80,8 @@ export default function TransactionsPage() {
             <div className="flex items-center gap-2 border border-gray-300 rounded-lg px-3 py-2 focus-within:border-brand-base transition-colors">
               <Search className="h-4 w-4 text-gray-400 shrink-0" />
               <input
-                value={search}
-                onChange={(e) => { setSearch(e.target.value); setPage(1) }}
+                value={filters.search}
+                onChange={(e) => update("search", e.target.value)}
                 placeholder="Buscar por descrição"
                 className="flex-1 bg-transparent text-sm text-gray-800 placeholder:text-gray-400 outline-none"
               />
@@ -107,7 +90,10 @@ export default function TransactionsPage() {
 
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1.5">Tipo</label>
-            <Select value={filterType} onValueChange={(v) => { setFilterType(v); setPage(1) }}>
+            <Select
+              value={filters.type}
+              onValueChange={(v) => update("type", v as TransactionFilterType)}
+            >
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectGroup>
@@ -121,7 +107,7 @@ export default function TransactionsPage() {
 
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1.5">Categoria</label>
-            <Select value={filterCategory} onValueChange={(v) => { setFilterCategory(v); setPage(1) }}>
+            <Select value={filters.categoryId} onValueChange={(v) => update("categoryId", v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectGroup>
@@ -136,7 +122,7 @@ export default function TransactionsPage() {
 
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1.5">Período</label>
-            <Select value={filterMonth} onValueChange={(v) => { setFilterMonth(v); setPage(1) }}>
+            <Select value={filters.month} onValueChange={(v) => update("month", v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectGroup>
@@ -170,118 +156,12 @@ export default function TransactionsPage() {
         ) : (
           <div className="divide-y divide-gray-200">
             {paginated.map((t) => (
-              <div key={t.id} className="px-4 py-4 hover:bg-gray-50 transition-colors lg:px-0 lg:py-0">
-                <div className="lg:hidden space-y-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3 min-w-0">
-                      {t.category ? (
-                        <CategoryIcon icon={t.category.icon} color={t.category.color} size="xs" />
-                      ) : (
-                        <div className="w-9 h-9 rounded-lg bg-gray-100" />
-                      )}
-                      <div className="min-w-0">
-                        <span className="block text-sm font-medium text-gray-800 truncate">{t.title}</span>
-                        <span className="text-xs text-gray-400">{formatDate(t.date)}</span>
-                      </div>
-                    </div>
-                    <span className="text-sm font-semibold text-gray-800 whitespace-nowrap">
-                      {t.type === "INCOME" ? "+" : "-"} {formatCurrency(t.amount)}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-1">
-                        {t.type === "EXPENSE" ? (
-                          <>
-                            <CircleArrowDown className="h-3 w-3 text-danger" />
-                            <span className="text-xs text-danger font-medium">Saída</span>
-                          </>
-                        ) : (
-                          <>
-                            <CircleArrowUp className="h-3 w-3 text-success" />
-                            <span className="text-xs text-success font-medium">Entrada</span>
-                          </>
-                        )}
-                      </div>
-                      {t.category ? (
-                        <CategoryBadge name={t.category.name} color={t.category.color} />
-                      ) : (
-                        <span className="text-xs text-gray-400">Sem categoria</span>
-                      )}
-                    </div>
-
-                    <div className="flex items-center justify-end gap-2">
-                      <button
-                        onClick={() => handleDelete(t.id)}
-                        className="cursor-pointer inline-flex h-7 w-7 items-center justify-center text-danger border border-gray-300 rounded-md hover:bg-red-light transition-colors"
-                      >
-                        <Trash className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        onClick={() => handleEdit(t)}
-                        className="cursor-pointer inline-flex h-7 w-7 items-center justify-center text-gray-500 border border-gray-300 rounded-md hover:text-brand-base hover:bg-green-light transition-colors"
-                      >
-                        <SquarePen className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="hidden lg:grid grid-cols-[1fr_124px_172px_124px_136px_80px] items-center px-6 py-3.5">
-                  <div className="flex items-center gap-3 min-w-0">
-                    {t.category ? (
-                      <CategoryIcon icon={t.category.icon} color={t.category.color} size="xs" />
-                    ) : (
-                      <div className="w-9 h-9 rounded-lg bg-gray-100" />
-                    )}
-                    <span className="text-sm font-medium text-gray-800 truncate">{t.title}</span>
-                  </div>
-
-                  <span className="text-sm text-gray-500 text-center">{formatDate(t.date)}</span>
-
-                  <div className="flex justify-center">
-                    {t.category ? (
-                      <CategoryBadge name={t.category.name} color={t.category.color} />
-                    ) : (
-                      <span className="text-xs text-gray-400">—</span>
-                    )}
-                  </div>
-
-                  <div className="flex items-center justify-center gap-1">
-                    {t.type === "EXPENSE" ? (
-                      <>
-                        <CircleArrowDown className="h-3 w-3 text-danger" />
-                        <span className="text-sm text-danger font-medium">Saída</span>
-                      </>
-                    ) : (
-                      <>
-                        <CircleArrowUp className="h-3 w-3 text-success" />
-                        <span className="text-sm text-success font-medium">Entrada</span>
-                      </>
-                    )}
-                  </div>
-
-                  <span className="text-sm font-semibold text-right text-gray-800">
-                    {t.type === "INCOME" ? "+" : "-"} {formatCurrency(t.amount)}
-                  </span>
-
-                  <div className="flex items-center justify-end gap-2">
-                    <button
-                      onClick={() => handleDelete(t.id)}
-                      className="cursor-pointer inline-flex h-7 w-7 items-center justify-center text-danger border border-gray-300 rounded-md hover:bg-red-light transition-colors"
-                    >
-                      <Trash className="h-3.5 w-3.5" />
-                    </button>
-                    <button
-                      onClick={() => handleEdit(t)}
-                      className="cursor-pointer inline-flex h-7 w-7 items-center justify-center text-gray-500 border border-gray-300 rounded-md hover:text-brand-base hover:bg-green-light transition-colors"
-                    >
-                      <SquarePen className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                </div>
-              </div>
+              <TransactionRow
+                key={t.id}
+                transaction={t}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+              />
             ))}
           </div>
         )}
@@ -293,36 +173,7 @@ export default function TransactionsPage() {
               {Math.min(page * PAGE_SIZE, filtered.length)} |{" "}
               {filtered.length} resultados
             </span>
-            <div className="flex items-center gap-2">
-              <button
-                disabled={page === 1}
-                onClick={() => setPage((p) => p - 1)}
-                className="cursor-pointer inline-flex h-7 w-7 items-center justify-center rounded-md text-sm text-gray-500 border border-gray-400 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
-                ‹
-              </button>
-              {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => i + 1).map((p) => (
-                <button
-                  key={p}
-                  onClick={() => setPage(p)}
-                  className={clsx(
-                    "cursor-pointer inline-flex h-7 w-7 items-center justify-center rounded-md text-sm font-medium transition-colors",
-                    p === page
-                      ? "bg-brand-base text-white border border-brand-base"
-                      : "text-gray-600 border border-gray-400 hover:bg-gray-100"
-                  )}
-                >
-                  {p}
-                </button>
-              ))}
-              <button
-                disabled={page === totalPages}
-                onClick={() => setPage((p) => p + 1)}
-                className="cursor-pointer inline-flex h-7 w-7 items-center justify-center rounded-md text-sm text-gray-500 border border-gray-400 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
-                ›
-              </button>
-            </div>
+            <Pagination page={page} totalPages={totalPages} onChange={setPage} />
           </div>
         )}
       </div>

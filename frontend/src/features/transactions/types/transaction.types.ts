@@ -20,7 +20,7 @@ export interface CreateTransactionInput {
   amount: number
   type: TransactionType
   date: string
-  categoryId?: string
+  categoryId: string
 }
 
 export interface UpdateTransactionInput {

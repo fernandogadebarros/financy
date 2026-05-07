@@ -6,6 +6,7 @@ import clsx from "clsx"
 import { Mail, Lock, EyeClosed, Eye, UserRoundPlus } from "lucide-react"
 import { useLogin } from "../hooks/useAuth"
 import { loginSchema, type LoginFormData } from "../schemas/auth.schemas"
+import { getErrorMessage } from "@utils/errors"
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
@@ -44,7 +45,7 @@ export default function LoginPage() {
 
         {error && (
           <div className="mb-4 rounded-lg bg-red-light border border-red-base/30 px-4 py-3 text-sm text-red-dark">
-            {(error as Error).message || "Credenciais inválidas"}
+            {getErrorMessage(error, "Credenciais inválidas")}
           </div>
         )}
 

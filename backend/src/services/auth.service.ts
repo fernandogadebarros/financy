@@ -2,40 +2,57 @@ import { GraphQLError } from "graphql"
 import prisma from "../prisma.js"
 import { hashPassword, comparePassword } from "../utils/hash.js"
 import { signToken } from "../utils/jwt.js"
+import { USER_PUBLIC_SELECT, toUserModel } from "../utils/userMapper.js"
+import { parseOrThrow } from "../utils/parseOrThrow.js"
+import { registerSchema, loginSchema, updateMeSchema } from "../validators/auth.validator.js"
 import type { RegisterInput, LoginInput } from "../dtos/input/auth.input.js"
+import type { AuthPayload } from "../dtos/output/auth.output.js"
+import type { UserModel } from "../models/user.model.js"
 
 export class AuthService {
-  async register(data: RegisterInput) {
+  async register(input: RegisterInput): Promise<AuthPayload> {
+    const data = parseOrThrow(registerSchema, input)
+
     const existing = await prisma.user.findUnique({ where: { email: data.email } })
     if (existing) {
-      throw new GraphQLError("Email already in use", { extensions: { code: "BAD_USER_INPUT" } })
+      throw new GraphQLError("Email already in use", { extensions: { code: "CONFLICT" } })
     }
 
-    const hashed = await hashPassword(data.password)
-    const user = await prisma.user.create({
-      data: { name: data.name, email: data.email, password: hashed },
+    const password = await hashPassword(data.password)
+    const created = await prisma.user.create({
+      data: { name: data.name, email: data.email, password },
+      select: USER_PUBLIC_SELECT,
     })
 
-    const token = signToken({ userId: user.id, email: user.email })
-    return { token, user }
+    return {
+      token: signToken({ userId: created.id, email: created.email }),
+      user: toUserModel(created),
+    }
   }
 
-  async login(data: LoginInput) {
-    const user = await prisma.user.findUnique({ where: { email: data.email } })
-    if (!user) {
+  async login(input: LoginInput): Promise<AuthPayload> {
+    const data = parseOrThrow(loginSchema, input)
+
+    const record = await prisma.user.findUnique({ where: { email: data.email } })
+    if (!record || !(await comparePassword(data.password, record.password))) {
       throw new GraphQLError("Invalid credentials", { extensions: { code: "UNAUTHENTICATED" } })
     }
 
-    const valid = await comparePassword(data.password, user.password)
-    if (!valid) {
-      throw new GraphQLError("Invalid credentials", { extensions: { code: "UNAUTHENTICATED" } })
+    return {
+      token: signToken({ userId: record.id, email: record.email }),
+      user: toUserModel(record),
     }
-
-    const token = signToken({ userId: user.id, email: user.email })
-    return { token, user }
   }
 
-  async updateMe(userId: string, name: string) {
-    return prisma.user.update({ where: { id: userId }, data: { name } })
+  async updateMe(userId: string, name: string): Promise<UserModel> {
+    const data = parseOrThrow(updateMeSchema, { name })
+    const updated = await prisma.user.update({
+      where: { id: userId },
+      data,
+      select: USER_PUBLIC_SELECT,
+    })
+    return toUserModel(updated)
   }
 }
+
+export const authService = new AuthService()

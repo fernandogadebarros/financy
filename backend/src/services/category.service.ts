@@ -1,5 +1,10 @@
 import { GraphQLError } from "graphql"
 import prisma from "../prisma.js"
+import { parseOrThrow } from "../utils/parseOrThrow.js"
+import {
+  createCategorySchema,
+  updateCategorySchema,
+} from "../validators/category.validator.js"
 import type { CreateCategoryInput, UpdateCategoryInput } from "../dtos/input/category.input.js"
 
 const INCLUDE_COUNT = { _count: { select: { transactions: true } } } as const
@@ -25,22 +30,26 @@ export class CategoryService {
   }
 
   async create(input: CreateCategoryInput, userId: string) {
+    const data = parseOrThrow(createCategorySchema, input)
     return prisma.category.create({
-      data: { ...input, userId },
+      data: { ...data, userId },
       include: INCLUDE_COUNT,
     })
   }
 
   async update(id: string, input: UpdateCategoryInput, userId: string) {
+    const data = parseOrThrow(updateCategorySchema, input)
     await this.findOne(id, userId)
+
+    const patch: Record<string, unknown> = {}
+    if (data.name !== undefined) patch.name = data.name
+    if (data.color !== undefined) patch.color = data.color
+    if (data.icon !== undefined) patch.icon = data.icon
+    if (data.description !== undefined) patch.description = data.description
+
     return prisma.category.update({
       where: { id },
-      data: {
-        ...(input.name && { name: input.name }),
-        ...(input.color && { color: input.color }),
-        ...(input.icon && { icon: input.icon }),
-        ...(input.description !== undefined && { description: input.description }),
-      },
+      data: patch,
       include: INCLUDE_COUNT,
     })
   }
@@ -51,3 +60,5 @@ export class CategoryService {
     return true
   }
 }
+
+export const categoryService = new CategoryService()

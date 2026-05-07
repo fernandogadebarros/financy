@@ -1,5 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { graphqlClient } from "@/core/api/graphqlClient"
+import { toast } from "@/core/components/toastStore"
+import { getErrorMessage } from "@utils/errors"
 import {
   GET_TRANSACTIONS,
   CREATE_TRANSACTION,
@@ -36,7 +38,9 @@ export function useCreateTransaction() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["transactions"] })
+      toast.success("Transação criada")
     },
+    onError: (error) => toast.error(getErrorMessage(error, "Erro ao criar transação")),
   })
 }
 
@@ -52,7 +56,9 @@ export function useUpdateTransaction() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["transactions"] })
+      toast.success("Transação atualizada")
     },
+    onError: (error) => toast.error(getErrorMessage(error, "Erro ao atualizar transação")),
   })
 }
 
@@ -64,6 +70,8 @@ export function useDeleteTransaction() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["transactions"] })
+      toast.success("Transação removida")
     },
+    onError: (error) => toast.error(getErrorMessage(error, "Erro ao remover transação")),
   })
 }

@@ -11,10 +11,17 @@ export function formatCurrency(amountInCents: number): string {
 }
 
 export function formatDate(value: string | number | Date): string {
+  if (typeof value === "string") {
+    const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value)
+    if (match) {
+      const [, year, month, day] = match
+      return `${day}/${month}/${year.slice(2)}`
+    }
+  }
   const d = new Date(value)
-  const day = String(d.getUTCDate()).padStart(2, "0")
-  const month = String(d.getUTCMonth() + 1).padStart(2, "0")
-  const year = String(d.getUTCFullYear()).slice(2)
+  const day = String(d.getDate()).padStart(2, "0")
+  const month = String(d.getMonth() + 1).padStart(2, "0")
+  const year = String(d.getFullYear()).slice(2)
   return `${day}/${month}/${year}`
 }
 

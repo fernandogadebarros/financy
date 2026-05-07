@@ -1,15 +1,26 @@
 import { GraphQLError } from "graphql"
+import type { Prisma } from "@prisma/client"
 import prisma from "../prisma.js"
-import type { CreateTransactionInput, UpdateTransactionInput } from "../dtos/input/transaction.input.js"
+import { parseOrThrow } from "../utils/parseOrThrow.js"
+import {
+  createTransactionSchema,
+  updateTransactionSchema,
+} from "../validators/transaction.validator.js"
+import type {
+  CreateTransactionInput,
+  UpdateTransactionInput,
+} from "../dtos/input/transaction.input.js"
 import { TransactionType, type TransactionModel } from "../models/transaction.model.js"
 
 const INCLUDE_CATEGORY = { category: true } as const
 
-function toTransactionType(value: string): TransactionType {
+export function toTransactionType(value: string): TransactionType {
   if (value === TransactionType.INCOME || value === TransactionType.EXPENSE) {
     return value
   }
-  throw new Error(`Unknown transaction type: ${value}`)
+  throw new GraphQLError("Invalid transaction state", {
+    extensions: { code: "INTERNAL_SERVER_ERROR" },
+  })
 }
 
 export class TransactionService {
@@ -34,18 +45,16 @@ export class TransactionService {
   }
 
   async create(input: CreateTransactionInput, userId: string): Promise<TransactionModel> {
-    const category = await prisma.category.findFirst({ where: { id: input.categoryId, userId } })
-    if (!category) {
-      throw new GraphQLError("Category not found", { extensions: { code: "NOT_FOUND" } })
-    }
+    const data = parseOrThrow(createTransactionSchema, input)
+    await this.assertCategoryOwned(data.categoryId, userId)
 
     const row = await prisma.transaction.create({
       data: {
-        title: input.title,
-        amount: input.amount,
-        type: input.type,
-        date: new Date(input.date),
-        categoryId: input.categoryId,
+        title: data.title,
+        amount: data.amount,
+        type: data.type,
+        date: new Date(data.date),
+        categoryId: data.categoryId,
         userId,
       },
       include: INCLUDE_CATEGORY,
@@ -53,25 +62,28 @@ export class TransactionService {
     return { ...row, type: toTransactionType(row.type) }
   }
 
-  async update(id: string, input: UpdateTransactionInput, userId: string): Promise<TransactionModel> {
+  async update(
+    id: string,
+    input: UpdateTransactionInput,
+    userId: string,
+  ): Promise<TransactionModel> {
+    const data = parseOrThrow(updateTransactionSchema, input)
     await this.findOne(id, userId)
 
-    if (input.categoryId) {
-      const category = await prisma.category.findFirst({ where: { id: input.categoryId, userId } })
-      if (!category) {
-        throw new GraphQLError("Category not found", { extensions: { code: "NOT_FOUND" } })
-      }
+    if (data.categoryId !== undefined) {
+      await this.assertCategoryOwned(data.categoryId, userId)
     }
+
+    const patch: Prisma.TransactionUpdateInput = {}
+    if (data.title !== undefined) patch.title = data.title
+    if (data.amount !== undefined) patch.amount = data.amount
+    if (data.type !== undefined) patch.type = data.type
+    if (data.date !== undefined) patch.date = new Date(data.date)
+    if (data.categoryId !== undefined) patch.category = { connect: { id: data.categoryId } }
 
     const row = await prisma.transaction.update({
       where: { id },
-      data: {
-        ...(input.title && { title: input.title }),
-        ...(input.amount !== undefined && { amount: input.amount }),
-        ...(input.type && { type: input.type }),
-        ...(input.date && { date: new Date(input.date) }),
-        ...(input.categoryId && { categoryId: input.categoryId }),
-      },
+      data: patch,
       include: INCLUDE_CATEGORY,
     })
     return { ...row, type: toTransactionType(row.type) }
@@ -82,4 +94,13 @@ export class TransactionService {
     await prisma.transaction.delete({ where: { id } })
     return true
   }
+
+  private async assertCategoryOwned(categoryId: string, userId: string): Promise<void> {
+    const category = await prisma.category.findFirst({ where: { id: categoryId, userId } })
+    if (!category) {
+      throw new GraphQLError("Category not found", { extensions: { code: "NOT_FOUND" } })
+    }
+  }
 }
+
+export const transactionService = new TransactionService()
